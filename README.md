@@ -125,6 +125,7 @@ find / -name flag*
 <img width="1133" height="199" alt="image" src="https://github.com/user-attachments/assets/ed5c6970-df14-47b6-aa09-7d804d16f60f" />
 
 **Signed_Too_Weak**
+
 页面直接给了备用账户密码登录，发现key为jwt，解密一下：
 <img width="2609" height="850" alt="image" src="https://github.com/user-attachments/assets/9521a6ae-8975-40f4-b335-afdf1578bbb1" />
 
@@ -161,6 +162,7 @@ python3 jwt_tool.py eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InVzZXI
 <img width="860" height="300" alt="image" src="https://github.com/user-attachments/assets/18ef49d9-a285-4206-9e62-d5825d902bc5" />
 
 那么我们输入密钥，将得到的jwt再次输入即可拿到flag
+
 
 **static**
 
@@ -260,3 +262,26 @@ http://preview.polar@127.0.0.1
 http://preview.polar@127.0.0.1/latest/meta-data/ctf/ec0cbb78afb6fb13dbf8
 ```
 
+**Pandora Box**
+
+也是一道文件上传题目，并且说只能上传png和jpg，最后还会拼接php，那么先上传一个正常的图片：
+<img width="1661" height="431" alt="image" src="https://github.com/user-attachments/assets/f68e8f0d-c310-4f42-9c0b-3f7221c5ab8b" />
+
+可以看到后缀拼接了.php，并且这里是include文件包含，看了视频之后说是在zip伪协议中可以直接读取压缩包的内部文件，尝试将一句话木马压缩为zip，并更改后缀为jpg进行上传，之后用zip伪协议进行读取：
+<img width="2638" height="618" alt="image" src="https://github.com/user-attachments/assets/e8a7cb32-12fe-48e4-bb57-e2aff953f9e8" />
+
+发现不再报错，可以进行蚁剑连接。然后这里的原理也说一下：
+```
+原理：
+
+PHP 支持封装协议，比如 zip:// 可以读取 zip 压缩包内的文件
+zip:///path/to/archive.zip#innerfile 表示：打开 /path/to/archive.zip 这个压缩包，读取其中的 innerfile
+这里 upload/xxx.jpg 虽然后缀是 .jpg，但实际上是 zip 格式，所以 PHP 的 zip:// 协议可以正常解析它
+%23 是 # 的 URL 编码，因为 # 在 URL 中是锚点标识，必须编码才能作为路径的一部分
+#shell 是指压缩包内的文件名为 shell（即压缩时里面的那个一句话木马文件）
+
+其中# 用来分隔压缩包路径和内部文件名
+格式固定：zip://压缩包绝对路径#内部文件
+zip://upload/xxx.jpg#shell
+意思是：打开 upload/xxx.jpg（它是一个 zip 格式的压缩包），取出里面的 shell 文件。
+```
