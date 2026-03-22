@@ -233,4 +233,30 @@ python3 jwt_tool.py eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InVzZXI
 
 **云中来信**
 
+<img width="2013" height="490" alt="image" src="https://github.com/user-attachments/assets/33cb8ee0-0817-4729-8e20-2683ae81c1a8" />
+
+看着像是服务器端请求伪造（SSRF），但是这里设置了一个白名单，网上找了一下发现可以用@：
+
+在URL中，@用于分隔认证信息和主机名。攻击者可构造形如http://allowed.com@127.0.0.1的URL，使服务器解析到127.0.0.1，而过滤器可能仅检查allowed.com
+
+因此这里我们可以如下构造：
+```
+http://preview.polar@127.0.0.1
+```
+<img width="1858" height="1359" alt="image" src="https://github.com/user-attachments/assets/89b99f65-510c-4dc2-a16e-e8cec834238b" />
+
+可以看到是能成功返回的，但是后面就不知道怎么做了，dirsearch扫路径也扫不出来点啥。看了wp，说是跟题目有关：云中来信，关系到了云服务器，网上有篇文章讲到云原数据攻击，选择这样一个路径：**目标地址/latest/meta-data**
+
+如果这个能请求成功，则 认定能发起攻击（包括状态码5xx）,那么我们进行访问：
+
+<img width="2137" height="1198" alt="image" src="https://github.com/user-attachments/assets/e9b5ecc9-bf04-4b99-9de0-d8504625a781" />
+
+也是直接给出了我们需要进行的操作，按着来，直接放到自定义请求头中，再次访问/meta-data：
+
+<img width="2510" height="1419" alt="image" src="https://github.com/user-attachments/assets/e2cb99a0-7f5d-4cd7-910d-ff4a574480b1" />
+
+最后读取一下即可：
+```
+http://preview.polar@127.0.0.1/latest/meta-data/ctf/ec0cbb78afb6fb13dbf8
+```
 
